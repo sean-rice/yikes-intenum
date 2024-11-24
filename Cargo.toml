@@ -1,0 +1,17 @@
+[package]
+name = "yikes-intenum"
+version = "0.0.4"
+authors = ["sean rice <dev@sean.ee>"]
+edition = "2021"
+description = "Augment integer-based enums with an unknown variant; a macro that makes you say \"yikes!\""
+license = "0BSD"
+repository = "https://github.com/sean-rice/yikes-intenum"
+readme = "./README.md"
+keywords = ["rust", "enum"]
+categories = ["rust-patterns"]
+
+[dependencies]
+paste = "1.0.15"
+
+[dev-dependencies]
+fnv = "1.0.7"
