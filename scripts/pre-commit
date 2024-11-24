@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# basic pre-commit checks for formatting, linting, and testing.
+# not guaranteed to catch anything and everything that will fail the ci pipline, but a
+# nice way to quickly check that nothing trivial you forgot to do will fail it.
+#
+# install with: ln -s "$(readlink -f ./scripts/pre-commit)" ./.git/hooks/
+
+set -eux
+
+__repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
+
+echo "${__repo_root}"
+
+(
+    cd "${__repo_root}" ;\
+    cargo fmt ;\
+    cargo clippy --all-targets -- -D warnings $(cat "${__repo_root}/.lints" | cut -f1 -d"#" | tr '\n' ' ') ;\
+    cargo test --all-features --all-targets ;\
+)

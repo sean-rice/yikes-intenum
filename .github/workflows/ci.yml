@@ -1,0 +1,118 @@
+# originally via https://github.com/Nicolas-Ferre/rust-example/blob/802ac08bf16f0c59399ca7a2fef8ba5dd0a08d63/.github/workflows/ci.yml
+
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION_STABLE: 1.68.0 # also update in rust-toolchain.toml and cd.yml!
+  RUST_VERSION_NIGHTLY: nightly-2024-11-23
+  MUTAGEN_COMMIT: a6377c4c3f360afeb7a287c1c17e4b69456d5f53
+  COV_THRESHOLD: 90.0
+  MUTAGEN_THRESHOLD: 100.0
+  CRATE_PATHS: .
+
+jobs:
+
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION_STABLE }}
+      - name: Build
+        run: cargo build --all-targets
+      - name: Test
+        run: cargo test --all-features --all-targets
+
+  check-coverage:
+    runs-on: ubuntu-22.04
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION_NIGHTLY }}
+          components: llvm-tools-preview
+      - name: Install grcov
+        run: >
+          sudo apt-get install -y curl
+          && curl -LO 'https://github.com/mozilla/grcov/releases/download/v0.8.20/grcov-x86_64-unknown-linux-gnu.tar.bz2'
+          && tar -vxjf grcov-x86_64-unknown-linux-gnu.tar.bz2
+          && chmod +x ./grcov
+          && mv ./grcov /usr/local/bin
+      - name: Run coverage
+        run: bash .github/workflows/scripts/run_coverage.sh
+      - name: Upload coverage report on GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage
+          if-no-files-found: error
+          retention-days: 90
+      # - name: Upload coverage report on Codecov
+      #   run: bash .github/workflows/scripts/upload_coverage_on_codecov.sh
+      - name: Check coverage threshold
+        run: bash .github/workflows/scripts/check_coverage.sh
+
+  # check-mutations:
+  #   runs-on: ubuntu-22.04
+  #   needs: test
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Install Rust toolchain
+  #       uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         toolchain: ${{ env.RUST_VERSION_NIGHTLY }}
+  #     - name: Install mutagen
+  #       run: bash .github/workflows/scripts/install_mutagen.sh
+  #     - name: Run mutation tests
+  #       run: bash .github/workflows/scripts/check_mutations.sh
+
+  lint-rust:
+    runs-on: ubuntu-22.04
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION_STABLE }}
+          components: rustfmt, clippy
+      - name: Run clippy
+        run: cargo clippy --all-targets -- -D warnings $(cat .lints | cut -f1 -d"#" | tr '\n' ' ')
+      - name: Run rustfmt
+        run: cargo fmt -- --check
+      - name: Run cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v1
+
+  lint-generic:
+    runs-on: ubuntu-22.04
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install other dependencies
+        run: sudo apt-get install moreutils dos2unix
+      - name: Check encoding
+        run: isutf8 **/*
+      - name: Check line endings
+        run: bash .github/workflows/scripts/check_line_endings.sh
+      - name: Check TODOs
+        run: bash .github/workflows/scripts/check_todos.sh
