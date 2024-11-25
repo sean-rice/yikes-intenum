@@ -1,6 +1,6 @@
 [package]
 name = "yikes-intenum"
-version = "0.0.4"
+version = "0.1.0"
 authors = ["sean rice <dev@sean.ee>"]
 edition = "2021"
 description = "Augment integer-based enums with an unknown variant; a macro that makes you say \"yikes!\""
